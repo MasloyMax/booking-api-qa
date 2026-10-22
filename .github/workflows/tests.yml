@@ -1,0 +1,38 @@
+name: API tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: api-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        java: ['21', '25']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - run: node --check fixture/server.mjs
+      - run: ./mvnw -B -ntp test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-reports-java-${{ matrix.java }}
+          path: |
+            target/surefire-reports/
+            target/fixture-stderr.log
+          retention-days: 7
